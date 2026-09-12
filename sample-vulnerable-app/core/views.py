@@ -6,6 +6,8 @@ from django.http import HttpResponse, JsonResponse
 from .models import UserProfile
 
 
+
+
 def search_users(request):
     # VULN: SQL injection — user input concatenated directly into raw SQL
     query = request.GET.get("q", "")

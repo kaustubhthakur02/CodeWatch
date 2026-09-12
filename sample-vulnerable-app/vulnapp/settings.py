@@ -1,5 +1,7 @@
 from pathlib import Path
 
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # VULN: hardcoded secret key committed to source control
