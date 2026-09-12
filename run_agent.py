@@ -85,6 +85,8 @@ def main() -> int:
         status = "validated" if patch.valid else "REJECTED"
         repairs = f", {patch.repair_attempts} self-repair round(s)" if patch.repair_attempts else ""
         print(f"  -> {len(patch.diff.splitlines())} diff lines, {status}{repairs}")
+        if patch.verification:
+            print(f"     re-scan: {patch.verification.summary()}")
         for problem in patch.problems:
             print(f"     ! {problem}")
         for f in patch.findings:

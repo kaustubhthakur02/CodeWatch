@@ -12,8 +12,17 @@ CATEGORIES = {
         "cwe": "CWE-89",
         "guidance": (
             "Replace string concatenation/formatting in SQL with parameterized queries "
-            "(cursor.execute(sql, [params])) or the Django ORM. Never interpolate user "
-            "input into the SQL string."
+            "(cursor.execute(sql, [params])) or the Django ORM.\n"
+            "    The placeholder is exactly %s. Never write %%s - with params supplied, "
+            "%%s is an escaped literal percent, not a placeholder, and the query breaks.\n"
+            "    A LIKE wildcard goes in the PARAMETER, not the SQL:\n"
+            "        cursor.execute('... WHERE name LIKE %s', ['%' + q + '%'])\n"
+            "    Table and column names CANNOT be parameterized. When user input selects an "
+            "identifier, validate it against an explicit allowlist and reject anything else - "
+            "do not skip the finding:\n"
+            "        ALLOWED_TABLES = {'core_userprofile', 'core_feedback'}\n"
+            "        if table not in ALLOWED_TABLES:\n"
+            "            return HttpResponse('invalid table', status=400)"
         ),
     },
     "command_injection": {

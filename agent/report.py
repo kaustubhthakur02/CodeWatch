@@ -107,6 +107,22 @@ def pr_body(
             ]
             if f.get("reference"):
                 lines += [f"**Reference:** {f['reference']}", ""]
+        v = patch.verification
+        if v and v.clean:
+            lines += [
+                f"> ✅ **Re-scanned after patching:** the scanner no longer reports any of the "
+                f"{len(v.resolved)} finding(s) in this file.",
+                "",
+            ]
+        elif v:
+            lines += [
+                "> 🔍 **Re-scanned after patching:** the scanner still flags "
+                f"{len(v.remaining)} pattern(s) here "
+                + ", ".join(f"`{f.short_rule}` (line {f.start_line})" for f in v.remaining[:4])
+                + ". Static analysis cannot prove an allowlist is sound, so this is often a false "
+                "positive on a correct fix — but please confirm it by eye.",
+                "",
+            ]
         if patch.additional_changes:
             lines += [
                 "**Also changed in this file** — not reported by the scanner, but unsafe to leave:",
