@@ -1,4 +1,6 @@
 import os
+import re
+import subprocess
 
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
@@ -9,18 +11,18 @@ from .models import UserProfile
 def search_users(request):
     # VULN: SQL injection — user input concatenated directly into raw SQL
     query = request.GET.get("q", "")
-    sql = "SELECT id, username, email FROM core_userprofile WHERE username LIKE '%" + query + "%'"
+    sql = "SELECT id, username, email FROM core_userprofile WHERE username LIKE %s"
     with connection.cursor() as cursor:
-        cursor.execute(sql)
+        cursor.execute(sql, ['%' + query + '%'])
         rows = cursor.fetchall()
     return JsonResponse({"results": rows})
 
 
 def user_detail(request, user_id):
     # VULN: SQL injection via string formatting with a path parameter
-    sql = "SELECT id, username, email, bio FROM core_userprofile WHERE id = %s" % user_id
+    sql = "SELECT id, username, email, bio FROM core_userprofile WHERE id = %s"
     with connection.cursor() as cursor:
-        cursor.execute(sql)
+        cursor.execute(sql, [user_id])
         row = cursor.fetchone()
     return JsonResponse({"user": row})
 
@@ -38,5 +40,8 @@ def submit_feedback(request):
 def ping_host(request):
     # VULN: command injection — user-controlled host passed straight to a shell
     host = request.GET.get("host", "127.0.0.1")
-    result = os.popen("ping -n 1 " + host).read()
-    return HttpResponse(result)
+    if not re.fullmatch(r'[A-Za-z0-9.-]{1,253}', host):
+        return HttpResponse('invalid host', status=400)
+    out = subprocess.run(['ping', '-n', '1', host], shell=False,
+                         capture_output=True, text=True, timeout=5).stdout
+    return HttpResponse(out)
