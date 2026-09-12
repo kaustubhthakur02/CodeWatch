@@ -35,6 +35,16 @@ def submit_feedback(request):
     return HttpResponse("ok")
 
 
+def export_report(request):
+    # New feature: let admins export any table as JSON.
+    table = request.GET.get("table", "core_userprofile")
+    order = request.GET.get("order_by", "id")
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM " + table + " ORDER BY " + order)
+        rows = cursor.fetchall()
+    return JsonResponse({"table": table, "rows": rows})
+
+
 def ping_host(request):
     # VULN: command injection — user-controlled host passed straight to a shell
     host = request.GET.get("host", "127.0.0.1")
