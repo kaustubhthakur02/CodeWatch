@@ -1,0 +1,10 @@
+.env
+findings.json
+report.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+pr_body.md
+email_preview.html
+hackathon-chat-context.md
