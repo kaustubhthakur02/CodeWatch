@@ -8,3 +8,6 @@ venv/
 pr_body.md
 email_preview.html
 hackathon-chat-context.md
+*.egg-info/
+build/
+dist/
