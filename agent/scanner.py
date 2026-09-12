@@ -71,6 +71,33 @@ def run_semgrep(repo_path: str | Path, configs: list[str] | None = None) -> dict
         return json.load(fh)
 
 
+def _relative_to_repo(raw_path: str, repo_path: Path) -> str:
+    """Normalize a Semgrep path to always be relative to the scanned repo root.
+
+    Semgrep reports paths relative to the *current working directory*, not to the
+    target it was given. Running it from the repo root yields 'app/core/views.py'
+    while running it from inside the app yields 'core/views.py'. Callers need one
+    stable form, otherwise a path prefix gets applied to a path that already has it.
+    """
+    raw = Path(raw_path.replace("\\", "/"))
+
+    # Absolute must be handled first: `repo_path / absolute` returns the absolute
+    # path unchanged in pathlib, so an exists() check would wrongly accept it.
+    if raw.is_absolute():
+        try:
+            return raw.resolve().relative_to(repo_path).as_posix()
+        except ValueError:
+            return raw.as_posix()
+
+    if (repo_path / raw).exists():
+        return raw.as_posix()
+
+    try:
+        return (Path.cwd() / raw).resolve().relative_to(repo_path).as_posix()
+    except ValueError:
+        return raw.as_posix()
+
+
 def _read_snippet(repo_path: Path, rel_path: str, start: int, end: int) -> str:
     """Semgrep OSS returns 'requires login' for the lines field, so read from disk."""
     file_path = repo_path / rel_path
@@ -87,7 +114,7 @@ def parse_findings(raw: dict, repo_path: str | Path) -> list[Finding]:
     findings = []
     for r in raw.get("results", []):
         meta = r["extra"].get("metadata", {})
-        rel_path = r["path"].replace("\\", "/")
+        rel_path = _relative_to_repo(r["path"], repo_path)
         start = r["start"]["line"]
         end = r["end"]["line"]
         fp = hashlib.sha256(f"{r['check_id']}|{rel_path}|{start}".encode()).hexdigest()[:12]
