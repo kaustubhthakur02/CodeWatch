@@ -81,6 +81,20 @@ def build_html(
         </tr>"""
         )
 
+    extras = [(p, c) for p in patches for c in p.additional_changes]
+    extras_html = ""
+    if extras:
+        items = "".join(
+            f"<li style='margin-bottom:6px;'><code>{p.path}</code> — {c.get('what','')}"
+            f"<br><span style='color:#6b7280;'>{c.get('why','')}</span></li>"
+            for p, c in extras
+        )
+        extras_html = f"""
+      <div style="background:#eff6ff;border-left:3px solid #2563eb;padding:12px 16px;margin:20px 0;border-radius:4px;">
+        <strong style="font-size:14px;">Also fixed — not flagged by the scanner</strong>
+        <ul style="margin:8px 0 0 18px;padding:0;color:#374151;font-size:14px;">{items}</ul>
+      </div>"""
+
     unfixed_html = ""
     if unfixed:
         items = "".join(
@@ -127,6 +141,7 @@ def build_html(
 
     <h3 style="font-size:15px;margin:28px 0 4px;">Fixes proposed ({len(fixed)})</h3>
     <table style="width:100%;border-collapse:collapse;">{''.join(rows)}</table>
+    {extras_html}
     {unfixed_html}
     {dep_section}
 

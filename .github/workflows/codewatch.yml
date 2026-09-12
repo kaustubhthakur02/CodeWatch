@@ -1,0 +1,74 @@
+name: CodeWatch Security Scan
+
+on:
+  push:
+    # Without this, CodeWatch's own fix branch would re-trigger this workflow,
+    # which would open another PR, which would push again — forever.
+    branches-ignore:
+      - 'codewatch/**'
+    paths:
+      - 'sample-vulnerable-app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scan:
+    name: Scan, fix, and propose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the pushed code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install CodeWatch
+        run: pip install -r requirements.txt
+
+      - name: Scan and triage
+        id: triage
+        run: |
+          python run_agent.py sample-vulnerable-app --no-fix
+
+      - name: Fix, open a pull request, and notify the author
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CODEWATCH_MODEL: ${{ vars.CODEWATCH_MODEL || 'openai/gpt-4o-mini' }}
+          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SECURITY_EMAIL: ${{ secrets.SECURITY_EMAIL }}
+          # Passed as env, never interpolated into the shell. A commit author name is
+          # attacker-controlled, so `${{ ... }}` inside `run:` would be script injection.
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          TARGET_REPO: ${{ github.repository }}
+        run: |
+          python run_agent.py sample-vulnerable-app \
+            --deps \
+            --open-pr \
+            --email \
+            --path-prefix sample-vulnerable-app \
+            --repo-name "$TARGET_REPO" \
+            --author-email "$AUTHOR_EMAIL" \
+            --author-name "$AUTHOR_NAME" \
+            --out codewatch-report.json
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codewatch-report
+          path: codewatch-report.json
+          if-no-files-found: ignore

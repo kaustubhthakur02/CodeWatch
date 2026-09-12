@@ -141,13 +141,17 @@ def main() -> int:
             html = notify.build_html(
                 patches, skipped, advisories, pr_url, repo_name, author_name=args.author_name or ""
             )
-            sent = notify.send_email(
-                subject=f"[CodeWatch] {fixed_total} security issue(s) in your push to {repo_name}",
-                html=html,
-                to_addrs=to_addrs,
-                cc_addrs=cc_addrs,
-            )
-            print(f"\nEmail sent to: {', '.join(sent)}")
+            try:
+                sent = notify.send_email(
+                    subject=f"[CodeWatch] {fixed_total} security issue(s) in your push to {repo_name}",
+                    html=html,
+                    to_addrs=to_addrs,
+                    cc_addrs=cc_addrs,
+                )
+                print(f"\nEmail sent to: {', '.join(sent)}")
+            except Exception as exc:
+                # The pull request is the deliverable; a mail problem must not fail the run.
+                print(f"\nEmail could not be sent ({type(exc).__name__}: {exc}) — the PR is still open.")
 
     if args.out:
         report_data = {

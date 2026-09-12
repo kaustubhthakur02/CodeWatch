@@ -37,8 +37,18 @@ Return STRICT JSON with this shape:
       "fixed": true|false
     }
   ],
+  "additional_changes": [
+    {
+      "what": "<any change you made that was NOT one of the listed findings>",
+      "why": "<why it was unsafe to leave, in one plain sentence>"
+    }
+  ],
   "risk_notes": "<anything a reviewer should double-check, or empty string>"
-}"""
+}
+
+If you change anything beyond the listed findings, you MUST declare it in additional_changes.
+A reviewer seeing an undocumented edit in a security patch will reject the whole PR. Leave
+additional_changes as an empty list if you changed nothing else."""
 
 
 @dataclass
@@ -50,6 +60,7 @@ class FilePatch:
     findings: list[dict]
     risk_notes: str
     valid: bool
+    additional_changes: list[dict] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
     repair_attempts: int = 0
 
@@ -148,6 +159,7 @@ def fix_file(
         diff=_make_diff(rel_path, source, fixed),
         findings=result.get("findings", []),
         risk_notes=result.get("risk_notes", ""),
+        additional_changes=result.get("additional_changes", []),
         valid=ok,
         problems=problems,
         repair_attempts=attempts,

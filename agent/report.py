@@ -107,6 +107,15 @@ def pr_body(
             ]
             if f.get("reference"):
                 lines += [f"**Reference:** {f['reference']}", ""]
+        if patch.additional_changes:
+            lines += [
+                "**Also changed in this file** — not reported by the scanner, but unsafe to leave:",
+                "",
+            ]
+            lines += [
+                f"- {c.get('what', '')} — {c.get('why', '')}" for c in patch.additional_changes
+            ]
+            lines.append("")
         if patch.problems:
             lines += ["<details><summary>Static analysis notes on this patch</summary>", ""]
             lines += [f"- `{p}`" for p in patch.problems]
