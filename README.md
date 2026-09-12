@@ -118,6 +118,30 @@ python run_agent.py sample-vulnerable-app --deps --open-pr --email \
   --author-email dev@example.com --author-name Dev
 ```
 
+## Use it on your own repo
+
+CodeWatch installs as a package, so a target repo doesn't need a copy of this code —
+just a workflow file.
+
+1. Copy [`templates/codewatch-workflow.yml`](templates/codewatch-workflow.yml) into your repo at
+   `.github/workflows/codewatch.yml`
+2. Add repo secrets: `OPENROUTER_API_KEY`, `EXA_API_KEY`, and optionally the `SMTP_*` values
+3. In **Settings → Actions → General → Workflow permissions**, enable *Read and write* and
+   *Allow GitHub Actions to create and approve pull requests* — without the second one, the PR
+   step fails with a 403
+
+Or run it locally against any checkout:
+
+```bash
+pip install git+https://github.com/kaustubhthakur02/CodeWatch.git
+codewatch /path/to/repo --changed-since origin/main --no-fix
+```
+
+**`--changed-since` matters on a real codebase.** Without it, CodeWatch reports every finding in
+the repository, so the first run on an established project tries to fix years of accumulated
+issues in a single pull request. Scoping to the files a push actually touched keeps each PR
+reviewable and is what the workflow template does by default.
+
 ## Try it
 
 [`sample-vulnerable-app/`](sample-vulnerable-app/) is a small Django app with deliberately planted

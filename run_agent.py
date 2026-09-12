@@ -38,6 +38,12 @@ def main() -> int:
     parser.add_argument("--author-name", help="commit author name, used to greet them")
     parser.add_argument("--path-prefix", default="", help="subdirectory the scanned repo sits in within the GitHub repo")
     parser.add_argument("--deps", action="store_true", help="check pinned dependencies for advisories via Exa")
+    parser.add_argument(
+        "--changed-since",
+        help="only report findings in files changed since this git ref (e.g. origin/main). "
+        "Without it, an established repo's entire backlog lands in one PR.",
+    )
+    parser.add_argument("--git-root", default=".", help="repo root for --changed-since (default: cwd)")
     args = parser.parse_args()
 
     repo = Path(args.repo).resolve()
@@ -50,6 +56,18 @@ def main() -> int:
         print(f"Scanning {repo} with Semgrep...")
         findings = scanner.scan(repo)
         print(f"Semgrep reported {len(findings)} findings")
+
+    if args.changed_since:
+        touched = triage.changed_files(args.git_root, args.changed_since)
+        if touched is None:
+            print(f"Could not diff against {args.changed_since}; scanning everything instead.")
+        else:
+            before = len(findings)
+            findings = triage.restrict_to(findings, touched, args.path_prefix)
+            print(
+                f"Restricted to {len(touched)} file(s) changed since {args.changed_since}: "
+                f"{before} -> {len(findings)} finding(s)"
+            )
 
     fixable = triage.prioritize(findings)
     skipped = triage.unfixable(findings)

@@ -1,0 +1,23 @@
+[project]
+name = "codewatch"
+version = "0.1.0"
+description = "A security agent that scans pushed code, writes the fix, and opens a pull request"
+requires-python = ">=3.10"
+dependencies = [
+    "semgrep>=1.80",
+    "pyflakes>=3.2",
+    "requests>=2.32",
+    "python-dotenv>=1.0",
+    "PyGithub>=2.3",
+]
+
+[project.scripts]
+codewatch = "run_agent:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["agent"]
+py-modules = ["run_agent"]

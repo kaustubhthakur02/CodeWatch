@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+
 from .scanner import Finding
 
 # CodeWatch only proposes fixes for categories it can patch reliably.
@@ -102,6 +105,39 @@ def prioritize(findings: list[Finding], dedupe: bool = True) -> list[tuple[Findi
         )
     )
     return deduplicate(fixable) if dedupe else fixable
+
+
+def changed_files(repo_path: str | Path, base_ref: str) -> set[str] | None:
+    """Files touched since base_ref, repo-relative. None if git cannot answer."""
+    try:
+        out = subprocess.run(
+            ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+            cwd=str(repo_path),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return {line.strip().replace("\\", "/") for line in out.stdout.splitlines() if line.strip()}
+
+
+def restrict_to(findings: list[Finding], paths: set[str], repo_subdir: str = "") -> list[Finding]:
+    """Keep only findings in the given paths.
+
+    Finding paths are relative to the scanned directory, while git reports paths
+    relative to the repository root, so the subdirectory has to be re-attached
+    before comparing.
+    """
+    prefix = repo_subdir.strip("/")
+    kept = []
+    for f in findings:
+        full = f"{prefix}/{f.path}" if prefix else f.path
+        if full in paths or f.path in paths:
+            kept.append(f)
+    return kept
 
 
 def unfixable(findings: list[Finding]) -> list[Finding]:

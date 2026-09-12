@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: codewatch
+Version: 0.1.0
+Summary: A security agent that scans pushed code, writes the fix, and opens a pull request
+Requires-Python: >=3.10
+Requires-Dist: semgrep>=1.80
+Requires-Dist: pyflakes>=3.2
+Requires-Dist: requests>=2.32
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: PyGithub>=2.3

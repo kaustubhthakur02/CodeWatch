@@ -1,0 +1,75 @@
+# Drop this into any Python repo at .github/workflows/codewatch.yml
+#
+# Required repo secrets:  OPENROUTER_API_KEY, EXA_API_KEY
+# Optional repo secrets:  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SECURITY_EMAIL
+#
+# Also required, once, in the target repo:
+#   Settings -> Actions -> General -> Workflow permissions
+#     - "Read and write permissions"
+#     - "Allow GitHub Actions to create and approve pull requests"
+
+name: CodeWatch Security Scan
+
+on:
+  push:
+    # CodeWatch's own fix branches must not re-trigger this workflow,
+    # or each PR would push again and open another PR indefinitely.
+    branches-ignore:
+      - 'codewatch/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  codewatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Needed so --changed-since can diff against the previous commit.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install CodeWatch
+        run: pip install "git+https://github.com/kaustubhthakur02/CodeWatch.git"
+
+      - name: Scan, fix, and open a pull request
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SECURITY_EMAIL: ${{ secrets.SECURITY_EMAIL }}
+          # Commit author fields are attacker-controlled. Passing them as env
+          # rather than interpolating into `run:` avoids shell injection.
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          TARGET_REPO: ${{ github.repository }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          codewatch . \
+            --changed-since "${BEFORE_SHA:-HEAD~1}" \
+            --deps \
+            --open-pr \
+            --email \
+            --repo-name "$TARGET_REPO" \
+            --author-email "$AUTHOR_EMAIL" \
+            --author-name "$AUTHOR_NAME" \
+            --max-files 3 \
+            --out codewatch-report.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codewatch-report
+          path: codewatch-report.json
+          if-no-files-found: ignore
